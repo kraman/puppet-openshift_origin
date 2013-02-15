@@ -155,11 +155,8 @@
 #
 # [*update_network_dns_servers*]
 #
-# True if Bind DNS server specified in `named_ipaddress` should be added as first DNS server
-# for application name resolution.
-
-class openshift_origin(
-  $node_fqdn                  = "${hostname}.${domain}",
+class openshift_origin (
+  $node_fqdn                  = $::fqdn,
   $create_origin_yum_repos    = true,
   $install_client_tools       = true,
   $enable_network_services    = true,
@@ -187,13 +184,19 @@ class openshift_origin(
 
   $configure_cgroups          = true,
   $configure_pam              = true,
-
   $broker_auth_plugin         = 'mongo',
   $broker_auth_pub_key        = '',
   $broker_auth_priv_key       = '',
   $broker_auth_key_password   = '',
   $broker_auth_salt           = 'ClWqe5zKtEW4CJEMyjzQ',
+  $kerberos_keytab            = '',
+  $kerberos_realm             = '',
+  $kerberos_service           = $node_fqdn,
   $broker_rsync_key           = '',
+  # for kerberos
+  $kerberos_keytab         = '/var/www/openshift/broker/httpd/conf.d/http.keytab',
+  $kerberos_realm          = 'EXAMPLE.COM',
+  $kerberos_service        = $node_fqdn,
 
   $mq_provider                = 'activemq',
   $mq_server_user             = 'mcollective',
