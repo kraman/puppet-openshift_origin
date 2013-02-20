@@ -22,17 +22,8 @@ class openshift_origin::qpidd {
       command => $use_firewalld ? {
         "true"    => "/usr/bin/firewall-cmd --permanent --zone=public --add-port=5672/tcp",
         default => "/usr/sbin/lokkit --port=5672:tcp",
-<<<<<<< HEAD
-<<<<<<< HEAD
-      }
-=======
-      },
       require => Package['firewall-package']
->>>>>>> ae20669af83baad7fc3709e475197e91006b45eb
-=======
       },
-      require => Package['firewall-package']
->>>>>>> 9bb804d24005f5491d889e4b05a4e6af1ab70ca5
     }
   }
 }
