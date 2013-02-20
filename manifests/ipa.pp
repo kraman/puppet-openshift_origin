@@ -14,6 +14,25 @@
 #  }
 #  ipa-client-install --enable-dns-updates --configure-ssh --mkhomedir
 #
+<<<<<<< HEAD
+=======
+
+# can I even do this - inherit then define?
+# make sure we use IPA server as ntp server so Kerberos can sync
+class openshift_origin::ipa inherits openshift_origin::ntpd {
+	ensure_resource( 'package', 'ntpdate', { ensure => 'latest' } )
+
+	class { 'ntp':
+	ensure     => running,
+	servers    => [ '${ipa_server}', # may have multiple IPA servers/replicas
+					'time.apple.com iburst',
+	                'pool.ntp.org iburst',
+	                'clock.redhat.com iburst'],
+	autoupdate => true
+	}
+}
+
+>>>>>>> 9bb804d24005f5491d889e4b05a4e6af1ab70ca5
 class openshift_origin::ipa{
 	# if Fedora then freeipa, if RHEL then ipa
 	case $::operatingsystem {
@@ -24,6 +43,15 @@ class openshift_origin::ipa{
 	package { "${ipa}-client":     ensure => present }
 	package { "${ipa}-admintools":	ensure => present }
 
+<<<<<<< HEAD
+=======
+	# for DNS  setup/updates
+	package { "bind": ensure => present }
+	package { "bind-dyndb-ldap": ensure => present }
+
+
+	# IPA client params
+>>>>>>> 9bb804d24005f5491d889e4b05a4e6af1ab70ca5
 	if $domain      { $opt_domain      = " --domain=${domain}"           }
 	if $ipa_server  { $opt_server      = " --server=${ipa_server}"       }
 	if $password    { $opt_password    = " -p admin -w ${password}"      }
@@ -32,6 +60,7 @@ class openshift_origin::ipa{
 
 	# define Kerberos Realm e.g. $realm = EXAMPLE.COM
 
+<<<<<<< HEAD
 	# 
 
 	# initial setup for Puppet Agent to be a client of IPA Server
@@ -40,10 +69,34 @@ class openshift_origin::ipa{
 	exec { 'ipa-client-install':
 		command => "/usr/sbin/ipa-client-install${opt_domain}${opt_server}\
 		${opt_password}${opt_dns_updates}${opt_automount} -U ${install_options}",
+=======
+	# setup firewalls
+
+	# initial setup for Puppet Agent to be a client of IPA Server
+	# kinit PM on PA
+	exec { 'kinit-puppetmaster':
+		command => "kinit -kt /etc/krb5.keytab host/${puppetmaster_hostname}",
+		unless => "kinit -kt /etc/krb5.keytab host/${puppetmaster_hostname} | grep 'ERROR'",
+			# need to somehow fail gracefully
+	}
+
+
+	# install ipa-client if /etc/ipa/default.conf does not exist
+	# wtf am I supposed to do w/ passwords? 
+
+	exec { 'ipa-client-install-check':
+		command => "/usr/sbin/ipa-client-install --installed | grep 'True'",
+		# somehow catch return value?
+>>>>>>> 9bb804d24005f5491d889e4b05a4e6af1ab70ca5
 		creates => '/etc/ipa/default.conf',
 		require => Package["${ipa}-client" ],
 	}
 
+<<<<<<< HEAD
+=======
+
+	if ! 
+>>>>>>> 9bb804d24005f5491d889e4b05a4e6af1ab70ca5
 	# add service if it's not already enrolled in IPA server
 	exec { 'ipa-service-add':
 		command => "/bin/ipa service-add puppet/$(/bin/hostname)",
@@ -138,6 +191,7 @@ class openshift_origin::ipa{
 	}
 }
 
+<<<<<<< HEAD
 # make sure we use IPA server as ntp server so Kerberos can sync
 class openshift_origin::ipa inherits openshift_origin::ntpd {
 	ensure_resource( 'package', 'ntpdate', { ensure => 'latest' } )
@@ -152,6 +206,8 @@ class openshift_origin::ipa inherits openshift_origin::ntpd {
 	}
 }
 
+=======
+>>>>>>> 9bb804d24005f5491d889e4b05a4e6af1ab70ca5
 # need to configure BIND correctly
 class openshift_origin::ipa inherits openshift_origin::named {
 

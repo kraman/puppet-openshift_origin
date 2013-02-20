@@ -33,13 +33,19 @@ class openshift_origin::broker {
   })
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> 9bb804d24005f5491d889e4b05a4e6af1ab70ca5
   ensure_resource( 'package', 'rubygem-openshift-origin-dns-bind', {
     ensure  => present,
     require => Yumrepo[openshift-origin]
   })
 
+<<<<<<< HEAD
 >>>>>>> ae20669af83baad7fc3709e475197e91006b45eb
+=======
+>>>>>>> 9bb804d24005f5491d889e4b05a4e6af1ab70ca5
   ensure_resource( 'package', 'rubygem-openshift-origin-controller', {
     ensure  => present,
     require => Yumrepo[openshift-origin]
@@ -854,6 +860,7 @@ class openshift_origin::broker {
         ]
       }
     }
+<<<<<<< HEAD
     # TODO: configure IPA/Kerberos Auth
     # TODO: separately, install ipa-client?
     'ipa': {
@@ -929,6 +936,10 @@ class openshift_origin::broker {
           File['openshift kerberos']
         ]
     }
+=======
+    'ipa': {
+      include openshift_origin::ipa
+>>>>>>> 9bb804d24005f5491d889e4b05a4e6af1ab70ca5
     }
     default: {
       fail "Unknown Auth plugin ${::openshift_origin::broker_auth_plugin}"
@@ -952,19 +963,25 @@ class openshift_origin::broker {
   exec { 'Broker gem dependencies' :
     cwd         => '/var/www/openshift/broker/',
 <<<<<<< HEAD
+<<<<<<< HEAD
     command     => '/usr/bin/rm -f Gemfile.lock && \
     /usr/bin/bundle install && \
     /usr/bin/chown apache:apache Gemfile.lock && \
     /usr/bin/rm -rf tmp/cache/*',
     subscribe   => [
 =======
+=======
+>>>>>>> 9bb804d24005f5491d889e4b05a4e6af1ab70ca5
     command     => "${::openshift_origin::rm} -f Gemfile.lock && \
     ${broker_bundle_show} && \
     ${::openshift_origin::chown} apache:apache Gemfile.lock && \
     ${::openshift_origin::rm} -rf tmp/cache/*",
     unless      => "/usr/bin/bundle show",
     require     => [
+<<<<<<< HEAD
 >>>>>>> ae20669af83baad7fc3709e475197e91006b45eb
+=======
+>>>>>>> 9bb804d24005f5491d889e4b05a4e6af1ab70ca5
       Package['openshift-origin-broker'],
       Package['rubygem-openshift-origin-controller'],
       File['openshift broker.conf'],

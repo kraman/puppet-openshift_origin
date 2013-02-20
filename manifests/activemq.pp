@@ -79,15 +79,21 @@ class openshift_origin::activemq{
     exec { 'Open port for ActiveMQ':
       command => $use_firewalld ? {
 <<<<<<< HEAD
+<<<<<<< HEAD
         "true"    => "/usr/bin/firewall-cmd --permanent --zone=public --add-port=61616/tcp",
         default => "/usr/sbin/lokkit --port=61616:tcp",
       }
 =======
+=======
+>>>>>>> 9bb804d24005f5491d889e4b05a4e6af1ab70ca5
         "true"    => "/usr/bin/firewall-cmd --permanent --zone=public --add-port=61613/tcp",
         default => "/usr/sbin/lokkit --port=61613:tcp",
       },
       require => Package['firewall-package']
+<<<<<<< HEAD
 >>>>>>> ae20669af83baad7fc3709e475197e91006b45eb
+=======
+>>>>>>> 9bb804d24005f5491d889e4b05a4e6af1ab70ca5
     }
   }
 }

@@ -86,22 +86,32 @@ class openshift_origin::node{
         "true"    => "/usr/bin/firewall-cmd --permanent --zone=public --add-port=8000/tcp",
         default => "/usr/sbin/lokkit --port=8000:tcp",
 <<<<<<< HEAD
-      }
-=======
-      },
-      require => Package['firewall-package']
->>>>>>> ae20669af83baad7fc3709e475197e91006b45eb
-    }
-    exec { 'Open HTTPS port for Node-webproxy':
-      command => $use_firewalld ? {
-        "true"    => "/usr/bin/firewall-cmd --permanent --zone=public --add-port=8443/tcp",
-        default => "/usr/sbin/lokkit --port=8443:tcp",
 <<<<<<< HEAD
       }
 =======
       },
       require => Package['firewall-package']
 >>>>>>> ae20669af83baad7fc3709e475197e91006b45eb
+=======
+      },
+      require => Package['firewall-package']
+>>>>>>> 9bb804d24005f5491d889e4b05a4e6af1ab70ca5
+    }
+    exec { 'Open HTTPS port for Node-webproxy':
+      command => $use_firewalld ? {
+        "true"    => "/usr/bin/firewall-cmd --permanent --zone=public --add-port=8443/tcp",
+        default => "/usr/sbin/lokkit --port=8443:tcp",
+<<<<<<< HEAD
+<<<<<<< HEAD
+      }
+=======
+      },
+      require => Package['firewall-package']
+>>>>>>> ae20669af83baad7fc3709e475197e91006b45eb
+=======
+      },
+      require => Package['firewall-package']
+>>>>>>> 9bb804d24005f5491d889e4b05a4e6af1ab70ca5
     }
   }else{
     warning 'Please ensure that ports 80, 443, 8000, 8443 are open for web requests'
@@ -172,15 +182,20 @@ class openshift_origin::node{
       command => "/usr/sbin/oo-init-quota",
       creates => "${gear_root_mount}/aquota.user",
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
       require => Package['openshift-origin-node-util'],
 >>>>>>> ae20669af83baad7fc3709e475197e91006b45eb
+=======
+      require => Package['openshift-origin-node-util'],
+>>>>>>> 9bb804d24005f5491d889e4b05a4e6af1ab70ca5
     }
   }else{
     warning 'Please ensure that quotas are enabled for /var/lib/openshift'
   }
 
   if $::openshift_origin::configure_cgroups == true {
+<<<<<<< HEAD
 <<<<<<< HEAD
     if $::operatingsystem == "Fedora" {
       file { 'fedora cgroups config':
@@ -219,6 +234,8 @@ class openshift_origin::node{
 
 =======
 >>>>>>> ae20669af83baad7fc3709e475197e91006b45eb
+=======
+>>>>>>> 9bb804d24005f5491d889e4b05a4e6af1ab70ca5
     if $::openshift_origin::enable_network_services == true {
       service { [
         'cgred',
