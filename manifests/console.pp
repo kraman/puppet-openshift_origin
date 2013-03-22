@@ -98,10 +98,21 @@ class openshift_origin::console {
       }
     )
 
+    ensure_resource('package', 'gcc', {
+        ensure   => 'latest',
+      }
+    )
+
+    ensure_resource('package', 'ruby-devel', {
+        ensure   => 'latest',
+      }
+    )
+
     ensure_resource('package', 'rdiscount', {
         ensure   => '1.6.8',
         provider => 'gem',
-        alias    => 'rubygem-rdiscount'
+        alias    => 'rubygem-rdiscount',
+        require  => [Package['gcc'],Package['ruby-devel']]
       }
     )
 
