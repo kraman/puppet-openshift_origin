@@ -1028,6 +1028,10 @@ class openshift_origin::broker {
         require => Yumrepo[openshift-origin],
       }
       
+      package { ['mod_auth_kerb']:
+        ensure => installed,
+      }
+
       file {'kerberos keytab':
         ensure => present,
         path => $::openshift_origin::kerberos_keytab,
@@ -1046,7 +1050,8 @@ class openshift_origin::broker {
         mode => '0644',
         require => [
           Package['rubygem-openshift-origin-auth-remote-user'],
-          File['kerberos keytab']
+          File['kerberos keytab'],
+          Package['mod_auth_kerb']
         ]
       }
 
@@ -1059,7 +1064,8 @@ class openshift_origin::broker {
         mode => '0644',
         require => [
           Package['rubygem-openshift-origin-auth-remote-user'],
-          File['kerberos keytab']
+          File['kerberos keytab'],
+          Package['mod_auth_kerb']
         ]
       }
 
