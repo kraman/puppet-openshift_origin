@@ -34,6 +34,8 @@
 #   True if an OpenShift Origin console should be installed and configured on this node.
 # [*configure_node*]
 #   True if an OpenShift Origin node should be installed and configured on this node.
+# [*use_v2_carts*]
+#   True if an OpenShift Origin node should be configured to use v2 cartridges. (Alpha)
 # [*set_sebooleans*]
 #   Set to true to setup selinux booleans. Set to 'delayed' to setup selinux booleans upon next boot.
 # [*install_repo*]
@@ -95,9 +97,9 @@
 # [*mongo_auth_password*]
 #   Password to authenticate against Mongo DB server
 # [*named_tsig_priv_key*]
-#   TSIG signature to authenticate against the Bind DNS server.  
+#   TSIG signature to authenticate against the Bind DNS server.
 # [*os_unmanaged_users*]
-#   List of users with UID which should not be managed by OpenShift. (By default OpenShift Origin PAM will reserve all 
+#   List of users with UID which should not be managed by OpenShift. (By default OpenShift Origin PAM will reserve all
 #   UID's > 500 and prevent user logins)
 # [*update_network_dns_servers*]
 #   True if Bind DNS server specified in <code>named_ipaddress</code> should be added as first DNS server for application name.
@@ -135,21 +137,23 @@ class openshift_origin (
   $configure_qpid             = false,
   $configure_mongodb          = true,
   $configure_named            = true,
-  $configure_avahi            = false,  
+  $configure_avahi            = false,
   $configure_broker           = true,
   $configure_console          = true,
   $configure_node             = true,
+  $use_v2_carts               = false,
   $set_sebooleans             = true,
   $install_login_shell        = false,
   $install_repo               = 'nightlies',
   $named_ipaddress            = $::ipaddress,
-  $avahi_ipaddress            = $::ipaddress,  
+  $avahi_ipaddress            = $::ipaddress,
   $mongodb_fqdn               = 'localhost',
   $mq_fqdn                    = $::fqdn,
   $broker_fqdn                = $::fqdn,
   $cloud_domain               = 'example.com',
   $dns_servers                = ['8.8.8.8', '8.8.4.4'],
   $configure_fs_quotas        = true,
+  $console_session_secret     = 'changeme',
   $oo_device                  = $::gear_root_device,
   $oo_mount                   = $::gear_root_mount,
   $configure_cgroups          = true,
@@ -158,9 +162,10 @@ class openshift_origin (
   $broker_auth_pub_key        = '',
   $broker_auth_priv_key       = '',
   $broker_auth_key_password   = '',
-  $broker_auth_salt           = 'ClWqe5zKtEW4CJEMyjzQ',
+  $broker_auth_salt           = 'changeme',
+  $broker_session_secret      = 'changeme',
   $broker_rsync_key           = '',
-  $broker_dns_plugin          = 'nsupdate',  
+  $broker_dns_plugin          = 'nsupdate',
   $kerberos_keytab            = '/var/www/openshift/broker/httpd/conf.d/http.keytab',
   $kerberos_realm             = 'EXAMPLE.COM',
   $kerberos_service           = $::fqdn,
@@ -176,6 +181,26 @@ class openshift_origin (
   $development_mode           = false
 ) {
   include openshift_origin::params
+
+  if $console_session_secret == 'changeme' {
+    warning 'The default console_session_secret is being used'
+  }
+
+  if $broker_session_secret == 'changeme' {
+    warning 'The default broker_session_secret is being used'
+  }
+
+  if $broker_auth_salt == 'changeme' {
+    warning 'The default broker_auth_salt is being used'
+  }
+
+  if $mongo_auth_password == 'mooo' {
+    warning 'The default mongo_auth_password is being used'
+  }
+
+  if $mq_server_password == 'marionette' {
+    warning 'The default mq_server_password is being used'
+  }
 
   if $::facterversion <= '1.6.16' {
     fail 'Facter version needs to be updated to at least 1.6.17'
@@ -381,11 +406,11 @@ class openshift_origin (
   if ($configure_console == true) {
     include openshift_origin::console
   }
-  
+
   if ($set_sebooleans == true or $set_sebooleans == 'delayed') {
     include openshift_origin::selinux
   }
-  
+
   if ($install_login_shell == true) {
     include openshift_origin::custom_shell
   }

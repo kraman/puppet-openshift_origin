@@ -128,6 +128,15 @@ class openshift_origin::node {
     mode    => '0644',
   }
 
+  file { 'node sshd config':
+    ensure  => present,
+    path    => '/etc/ssh/sshd_config',
+    content => template('openshift_origin/node/sshd_config.erb'),
+    owner   => 'root',
+    group   => 'root',
+    mode    => '0600',
+  }
+
   if !defined(File['mcollective client config']) {
     file { 'mcollective client config':
       ensure  => present,
@@ -200,6 +209,41 @@ class openshift_origin::node {
   }
 
   if $::openshift_origin::configure_cgroups == true {
+    if $::operatingsystem == "Fedora" {
+      file { 'fedora cgroups config':
+        ensure  => present,
+        path    => '/etc/systemd/system.conf',
+        content => template('openshift_origin/node/system.conf.erb'),
+        owner   => 'root',
+        group   => 'root',
+        mode    => '0644',
+      }
+      if $::operatingsystemrelease == "18" {
+        exec { 'Rebuild initrd to include system.conf':
+          command     => "/usr/sbin/dracut --include /etc/systemd/system.conf /etc/systemd/system.conf --force",
+          require     => File['fedora cgroups config'],
+          refreshonly => true,
+          subscribe   => File['fedora cgroups config'],
+        }
+      }
+    }
+
+    file { '/cgroup':
+      ensure => directory,
+      owner  => 'root',
+      group  => 'root',
+      mode   => '0755',
+    }
+
+    file { 'cgroups config':
+      ensure  => present,
+      path    => '/etc/cgconfig.conf',
+      content => template('openshift_origin/node/cgconfig.conf.erb'),
+      owner   => 'root',
+      group   => 'root',
+      mode    => '0644',
+    }
+
     if $::openshift_origin::enable_network_services == true {
       service { [
         'cgconfig',
@@ -223,78 +267,89 @@ class openshift_origin::node {
   }
 
   if $::openshift_origin::configure_pam == true {
-    $pam_sshd_template = $::operatingsystem ? {
-      'Fedora' => template('openshift_origin/node/pam.sshd-fedora.erb'),
-      default  => template('openshift_origin/node/pam.sshd-rhel.erb'),
+    augeas { 'openshift node pam sshd':
+      context => "/files/etc/pam.d/sshd",
+      changes => [
+	  "set /files/etc/pam.d/sshd/#comment[.='pam_selinux.so close should be the first session rule'] 'pam_openshift.so close should be the first session rule'",
+          "ins 01 before *[argument='close']",
+          "set 01/type session",
+          "set 01/control required",
+          "set 01/module pam_openshift.so",
+          "set 01/argument close",
+          "set 01/#comment 'Managed by puppet:openshift_origin'",
+
+          "set /files/etc/pam.d/sshd/#comment[.='pam_selinux.so open should only be followed by sessions to be executed in the user context'] 'pam_openshift.so open should only be followed by sessions to be executed in the user context'",
+          "ins 02 before *[argument='open']",
+          "set 02/type session",
+          "set 02/control required",
+          "set 02/module pam_openshift.so",
+          "set 02/argument[1] open",
+          "set 02/argument[2] env_params",
+          "set 02/#comment 'Managed by puppet:openshift_origin'",
+
+          "rm *[module='pam_selinux.so']",
+
+          "set 03/type session",
+          "set 03/control required",
+          "set 03/module pam_namespace.so",
+          "set 03/argument[1] no_unmount_on_close",
+          "set 03/#comment 'Managed by puppet:openshift_origin'",
+
+          "set 04/type session",
+          "set 04/control optional",
+          "set 04/module pam_cgroup.so",
+          "set 04/#comment 'Managed by puppet:openshift_origin'",
+        ],
+        onlyif => "match *[#comment='Managed by puppet:openshift_origin'] size == 0"
     }
 
-    file { 'openshift node pam sshd':
-      ensure  => present,
-      path    => '/etc/pam.d/sshd',
-      content => $pam_sshd_template,
-      owner   => 'root',
-      group   => 'root',
-      mode    => '0644',
-      require => Package['pam_openshift'],
+    augeas { 'openshift node pam runuser':
+      context => "/files/etc/pam.d/runuser",
+      changes => [
+          "set 01/type session",
+          "set 01/control required",
+          "set 01/module pam_namespace.so",
+          "set 01/argument[1] no_unmount_on_close",
+          "set 01/#comment 'Managed by puppet:openshift_origin'",
+        ],
+        onlyif => "match *[#comment='Managed by puppet:openshift_origin'] size == 0"
     }
 
-    $pam_runuser_template = $::operatingsystem ? {
-      default => template('openshift_origin/node/pam.runuser-fedora.erb'),
+    augeas { 'openshift node pam runuser-l':
+      context => "/files/etc/pam.d/runuser-l",
+      changes => [
+          "set 01/type session",
+          "set 01/control required",
+          "set 01/module pam_namespace.so",
+          "set 01/argument[1] no_unmount_on_close",
+          "set 01/#comment 'Managed by puppet:openshift_origin'",
+        ],
+        onlyif => "match *[#comment='Managed by puppet:openshift_origin'] size == 0"
     }
 
-    file { 'openshift node pam runuser':
-      ensure  => present,
-      path    => '/etc/pam.d/runuser',
-      content => $pam_runuser_template,
-      owner   => 'root',
-      group   => 'root',
-      mode    => '0644',
-      require => Package['pam_openshift'],
+    augeas { 'openshift node pam su':
+      context => "/files/etc/pam.d/su",
+      changes => [
+          "set 01/type session",
+          "set 01/control required",
+          "set 01/module pam_namespace.so",
+          "set 01/argument[1] no_unmount_on_close",
+          "set 01/#comment 'Managed by puppet:openshift_origin'",
+        ],
+        onlyif => "match *[#comment='Managed by puppet:openshift_origin'] size == 0"
     }
 
-    $pam_runuser_l_template = $::operatingsystem ? {
-      default => template('openshift_origin/node/pam.runuser-l-fedora.erb'),
-    }
-
-    file { 'openshift node pam runuser-l':
-      ensure  => present,
-      path    => '/etc/pam.d/runuser-l',
-      content => $pam_runuser_l_template,
-      owner   => 'root',
-      group   => 'root',
-      mode    => '0644',
-      require => Package['pam_openshift'],
-    }
-
-    $pam_su_template = $::operatingsystem ? {
-      'Fedora' => template('openshift_origin/node/pam.su-fedora.erb'),
-      default  => template('openshift_origin/node/pam.su-rhel.erb'),
-    }
-
-    file { 'openshift node pam su':
-      ensure  => present,
-      path    => '/etc/pam.d/su',
-      content => $pam_su_template,
-      owner   => 'root',
-      group   => 'root',
-      mode    => '0644',
-      require => Package['pam_openshift'],
-    }
-
-    $pam_system_auth_ac_template = $::operatingsystem ? {
-      'Fedora' => template('openshift_origin/node/pam.system-auth-ac-fedora.erb'),
-      default  => template('openshift_origin/node/pam.system-auth-ac-rhel.erb'),
-    }
-
-    file { 'openshift node pam system-auth-ac':
-      ensure  => present,
-      path    => '/etc/pam.d/system-auth-ac',
-      content => $pam_system_auth_ac_template,
-      owner   => 'root',
-      group   => 'root',
-      mode    => '0644',
-      require => Package['pam_openshift'],
-    }
+    augeas { 'openshift node pam system-auth-ac':
+      context => "/files/etc/pam.d/system-auth-ac",
+      changes => [
+          "set 01/type session",
+          "set 01/control required",
+          "set 01/module pam_namespace.so",
+          "set 01/argument[1] no_unmount_on_close",
+          "set 01/#comment 'Managed by puppet:openshift_origin'",
+        ],
+        onlyif => "match *[#comment='Managed by puppet:openshift_origin'] size == 0"
+    }  
 
     $os_all_unmanaged_users = [['root', 'adm', 'apache'], $::openshift_origin::os_unmanaged_users]
 
@@ -340,15 +395,15 @@ class openshift_origin::node {
     mode    => '0644',
   }
 
-  $printf = $::operatingsystem ? {
-    'Fedora' => '/bin/printf "\nAcceptEnv GIT_SSH\n" >> "/etc/ssh/sshd_config"',
-    default  => '/usr/bin/printf "\nAcceptEnv GIT_SSH\n" >> "/etc/ssh/sshd_config"'
-  }
+#  $printf = $::operatingsystem ? {
+#    'Fedora' => '/bin/printf "\nAcceptEnv GIT_SSH\n" >> "/etc/ssh/sshd_config"',
+#    default  => '/usr/bin/printf "\nAcceptEnv GIT_SSH\n" >> "/etc/ssh/sshd_config"'
+#  }
 
-  exec { 'Update sshd configs':
-    command => $printf,
-    unless  => '/bin/grep -qFx \'AcceptEnv GIT_SSH\' \'/etc/ssh/sshd_config\''
-  }
+#  exec { 'Update sshd configs':
+#    command => $printf,
+#    unless  => '/bin/grep -qFx \'AcceptEnv GIT_SSH\' \'/etc/ssh/sshd_config\''
+#  }
 
   if $::openshift_origin::enable_network_services == true {
     service { 'crond':
@@ -442,45 +497,109 @@ class openshift_origin::node {
     }
   }
 
-  package { [
-    'openshift-origin-cartridge-abstract',
-    'openshift-origin-cartridge-10gen-mms-agent-0.1',
-    'openshift-origin-cartridge-cron-1.4',
-    'openshift-origin-cartridge-diy-0.1',
-    'openshift-origin-cartridge-haproxy-1.4',
-    'openshift-origin-cartridge-mongodb-2.2',
-    'openshift-origin-cartridge-mysql-5.1',
-    'openshift-origin-cartridge-nodejs-0.6',
-    'openshift-origin-cartridge-jenkins-1.4',
-    'openshift-origin-cartridge-jenkins-client-1.4',
-    'openshift-origin-cartridge-community-python-2.7',
-    'openshift-origin-cartridge-community-python-3.3',
-  ]:
-    ensure  => present,
-    require => [
-      Yumrepo[openshift-origin],
-      Yumrepo[openshift-origin-deps],
-    ],
-  }
+  if ($::openshift_origin::use_v2_carts == false) {
+    package { [
+      'openshift-origin-cartridge-abstract',
+      'openshift-origin-cartridge-10gen-mms-agent-0.1',
+      'openshift-origin-cartridge-cron-1.4',
+      'openshift-origin-cartridge-diy-0.1',
+      'openshift-origin-cartridge-haproxy-1.4',
+      'openshift-origin-cartridge-mongodb-2.2',
+      'openshift-origin-cartridge-mysql-5.1',
+      'openshift-origin-cartridge-nodejs-0.6',
+      'openshift-origin-cartridge-jenkins-1.4',
+      'openshift-origin-cartridge-jenkins-client-1.4',
+      'openshift-origin-cartridge-community-python-2.7',
+      'openshift-origin-cartridge-community-python-3.3',
+    ]:
+      ensure  => present,
+      require => [
+        Yumrepo[openshift-origin],
+        Yumrepo[openshift-origin-deps],
+      ],
+    }
 
-  case $::operatingsystem {
-    'Fedora' : {
-      package { [
+    case $::operatingsystem {
+      'Fedora' : {
+        package { [
+          'openshift-origin-cartridge-postgresql-9.2',
+          'openshift-origin-cartridge-ruby-1.9',
+          'openshift-origin-cartridge-php-5.4',
+          'openshift-origin-cartridge-perl-5.16',
+          'openshift-origin-cartridge-phpmyadmin-3.5',
+        ]:
+          ensure  => present,
+          require => [
+            Yumrepo[openshift-origin],
+            Yumrepo[openshift-origin-deps],
+          ],
+        }
+      }
+      default  : {
+        package { [
+          'openshift-origin-cartridge-postgresql-8.4',
+          'openshift-origin-cartridge-ruby-1.9-scl',
+          'openshift-origin-cartridge-ruby-1.8',
+          'openshift-origin-cartridge-php-5.3',
+          'openshift-origin-cartridge-perl-5.10',
+          'openshift-origin-cartridge-python-2.6',
+          'openshift-origin-cartridge-phpmyadmin-3.4',
+        ]:
+          ensure  => present,
+          require => [
+            Yumrepo[openshift-origin],
+            Yumrepo[openshift-origin-deps],
+          ],
+        }
+      }
+    }
+
+    file { 'remove v2 cartridge marker':
+      ensure  => absent,
+      path    => '/var/lib/openshift/.settings/v2_cartridge_format'
+    }
+
+    file { 'remove node setting markers dir':
+      ensure  => absent,
+      path    => '/var/lib/openshift/.settings',
+      require => File['remove v2 cartridge marker']
+    }
+  } else {
+    file { 'create node setting markers dir':
+      ensure  => 'directory',
+      path    => '/var/lib/openshift/.settings',
+      owner   => 'root',
+      group   => 'root',
+      mode    => '0755'
+    }
+
+    file { 'create v2 cartridge marker':
+      ensure  => present,
+      path    => '/var/lib/openshift/.settings/v2_cartridge_format',
+      content => '',
+      owner   => 'root',
+      group   => 'root',
+      mode    => '0644',
+      require => File['create node setting markers dir']
+    }
+
+    package { [
+        'openshift-origin-cartridge-10gen-mms-agent-0.1',
+        'openshift-origin-cartridge-cron-1.4',
+        'openshift-origin-cartridge-diy-0.1',
+        'openshift-origin-cartridge-haproxy-1.4',
+        'openshift-origin-cartridge-mongodb-2.2',
+        'openshift-origin-cartridge-mysql-5.1',
+        'openshift-origin-cartridge-nodejs-0.6',
+        'openshift-origin-cartridge-jenkins-1.4',
+        'openshift-origin-cartridge-jenkins-client-1.4',
+        'openshift-origin-cartridge-community-python-2.7',
+        'openshift-origin-cartridge-community-python-3.3',
         'openshift-origin-cartridge-postgresql-9.2',
         'openshift-origin-cartridge-ruby-1.9',
         'openshift-origin-cartridge-php-5.4',
         'openshift-origin-cartridge-perl-5.16',
         'openshift-origin-cartridge-phpmyadmin-3.5',
-      ]:
-        ensure  => present,
-        require => [
-          Yumrepo[openshift-origin],
-          Yumrepo[openshift-origin-deps],
-        ],
-      }
-    }
-    default  : {
-      package { [
         'openshift-origin-cartridge-postgresql-8.4',
         'openshift-origin-cartridge-ruby-1.9-scl',
         'openshift-origin-cartridge-ruby-1.8',
@@ -489,12 +608,25 @@ class openshift_origin::node {
         'openshift-origin-cartridge-python-2.6',
         'openshift-origin-cartridge-phpmyadmin-3.4',
       ]:
-        ensure  => present,
-        require => [
-          Yumrepo[openshift-origin],
-          Yumrepo[openshift-origin-deps],
-        ],
-      }
+        ensure  => absent,
+    }
+
+    package { [
+      'openshift-origin-cartridge-abstract',
+      'openshift-origin-cartridge-php',
+    ]:
+      ensure  => present,
+      require => [
+        Yumrepo[openshift-origin],
+        Yumrepo[openshift-origin-deps],
+      ],
+      notify => Exec['oo-admin-cartridge'],
+    }
+    
+    # Note, this does not handle cartridge uninstalls
+    exec { 'oo-admin-cartridge':
+      command => '/usr/sbin/oo-admin-cartridge --recursive -a install -s /usr/libexec/openshift/cartridges/v2/',
+      refreshonly => true,
     }
   }
 }
