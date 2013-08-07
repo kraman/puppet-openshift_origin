@@ -246,6 +246,15 @@ class openshift_origin::node {
         require => Yumrepo['openshift-origin'],
       }
     )
+    
+    file { 'sysctl config tweaks':
+      ensure  => present,
+      path    => '/etc/sysctl.conf',
+      content => template('openshift_origin/node/plugin/container/selinux/sysctl.conf.erb'),
+      owner   => 'root',
+      group   => 'root',
+      mode    => '0644',
+    }
 
     if $::openshift_origin::configure_pam == true {
       augeas { 'openshift node pam sshd':
@@ -368,7 +377,12 @@ class openshift_origin::node {
     }
   }
 
-  if $::openshift_origin::node_container == 'libvirt-lxc' {
+  if $::openshift_origin::node_container == 'libvirt' {
+    ensure_resource('package', 'firewalld', {
+        ensure  => "purged",
+      }
+    )
+  
     ensure_resource('package', 'libvirt-daemon', {
         ensure  => latest,
         require => Yumrepo['openshift-origin'],
@@ -380,20 +394,65 @@ class openshift_origin::node {
       }
     )
 
+    ensure_resource('package', 'rubygem-openshift-origin-container-libvirt', {
+        ensure  => present,
+        require => [Package['libvirt-daemon'], Package['libvirt-sandbox']]
+      }
+    )
+
     service { 'libvirtd':
       enable  => true,
+      ensure  => "running",
       require => [Package['libvirt-daemon'], Package['libvirt-sandbox']]
     }
-  }
-  
+    
+    file { '/etc/libvirt/hooks/lxc':
+      content => template('openshift_origin/node/plugin/container/libvirt/lxc_hook.erb'),
+      require => [Package['libvirt-daemon'], Package['libvirt-sandbox']],
+      mode    => 0700,
+      owner   => 'root',
+      group   => 'root',
+    }
 
-  file { 'sysctl config tweaks':
-    ensure  => present,
-    path    => '/etc/sysctl.conf',
-    content => template('openshift_origin/node/sysctl.conf.erb'),
-    owner   => 'root',
-    group   => 'root',
-    mode    => '0644',
+    file { '/etc/libvirt/virt-login-shell.conf':
+      content => template('openshift_origin/node/plugin/container/libvirt/virt-login-shell.conf.erb'),
+      require => [Package['libvirt-daemon'], Package['libvirt-sandbox']]
+    }
+  
+    group { "openshift":
+      ensure => "present",
+        gid    => $::openshift_origin::openshift_group_gid, 
+    }
+    
+    file { '/etc/openshift/container-libvirt.conf':
+      content => template('openshift_origin/node/plugin/container/libvirt/container-libvirt.conf.erb')
+    }
+  
+    file { '/tmp/net_default.xml':
+      content => template('openshift_origin/node/plugin/container/libvirt/default_net.xml.erb')
+    }
+    
+    file { '/etc/modules-load.d/brodge.conf':
+      content => "#load bridge module for OpenShift LibVirt container\nbridge",
+    }
+    
+    exec { 'Setup default libvirt network':
+      command => '/usr/bin/virsh net-destroy default ;
+                  /usr/bin/virsh net-undefine default ; 
+                  /usr/bin/virsh net-define /tmp/net_default.xml && 
+                  /usr/bin/virsh net-autostart default && 
+                  /usr/bin/virsh net-start default',
+      require => [File['/tmp/net_default.xml'],Service['libvirtd']]
+    }
+    
+    file { 'sysctl config tweaks':
+      ensure  => present,
+      path    => '/etc/sysctl.conf',
+      content => template('openshift_origin/node/plugin/container/libvirt/sysctl.conf.erb'),
+      owner   => 'root',
+      group   => 'root',
+      mode    => '0644',
+    }
   }
 
   if $::openshift_origin::enable_network_services == true {

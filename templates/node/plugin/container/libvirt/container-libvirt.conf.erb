@@ -1,0 +1,3 @@
+LIBVIRT_PRIVATE_IP_RANGE=<%= scope.lookupvar('::openshift_origin::libvirt_nat_ip_range') %>
+LIBVIRT_PRIVATE_IP_ROUTE=<%= scope.lookupvar('::openshift_origin::libvirt_nat_ip_range') %>
+LIBVIRT_PRIVATE_IP_GW=<%= scope.lookupvar('::openshift_origin::libvirt_gw') %>

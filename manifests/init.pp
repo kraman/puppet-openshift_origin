@@ -187,7 +187,12 @@ class openshift_origin (
   $development_mode           = false,
   $eth_device                 = 'eth0',
   $min_gear_uid               = 500,
-  $node_container             = 'selinux'
+  $node_container             = 'selinux',
+  $openshift_group_gid        = 990,
+  $libvirt_gw                 = '172.16.0.1',
+  $libvirt_gw_mask            = '255.255.0.0',
+  $libvirt_nat_ip_range       = '172.16.0.0/12',
+  $use_firewalld              = false,
 ) {
   include openshift_origin::params
 

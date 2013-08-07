@@ -1,0 +1,6 @@
+<network>
+  <name>default</name>
+  <forward mode='nat'/>
+  <bridge name='virbr0' stp='on' delay='0' />
+  <ip address='<%= scope.lookupvar('::openshift_origin::libvirt_gw') %>' netmask='<%= scope.lookupvar('::openshift_origin::libvirt_gw_mask') %>'/>
+</network>
